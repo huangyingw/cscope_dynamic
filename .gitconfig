@@ -1,0 +1,16 @@
+[remote "erig0"]
+    url = git@github.com:erig0/cscope_dynamic.git
+    fetch = +refs/heads/*:refs/remotes/erig0/*
+[push]
+    remote = origin
+[gsync]
+    remote = erig0
+    branch = master
+[commit]
+    message = n
+[branch "master"]
+    remote = origin
+    merge = refs/heads/master
+[branch "dev"]
+    remote = origin
+    merge = refs/heads/dev
