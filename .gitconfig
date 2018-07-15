@@ -14,3 +14,6 @@
 [branch "dev"]
     remote = origin
     merge = refs/heads/dev
+[branch "autoload/dev"]
+    remote = origin
+    merge = refs/heads/autoload/dev
