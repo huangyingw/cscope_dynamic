@@ -323,7 +323,7 @@ if has("cscope")
             if !cscope_connection(3, "out", b:csdbpath)
                 let save_csvb = &csverb
                 set nocsverb
-                exe "cs add " . b:csdbpath . "/cscope.out " . b:csdbpath
+                exe "cs add " . b:csdbpath . "/cscope.out"
                 let s:proj_file = b:csdbpath . "/files.proj"
                 let s:big_file = b:csdbpath . "/cscope.out"
                 let s:small_file = b:csdbpath . "/cscope.small"
