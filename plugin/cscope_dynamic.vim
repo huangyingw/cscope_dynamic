@@ -166,65 +166,15 @@ if has("cscope")
 
             let s:small_update = 2
         else
-            " Build auto file list
-            "
-            if filereadable(expand(s:src_dirs_file))
-                let src_dirs = ""
-                for path in readfile(expand(s:src_dirs_file))
-                    let src_dirs .= " ".path
-                endfor
-            else
-                let src_dirs = " . "
-            endif
-
-            let cmd .= "("
-            let cmd .= "set -f;" " turn off sh globbing
-            if s:auto_files
-                " Do the find command a 'portable' way
-                let cmd .= "find ".src_dirs." -name *.c   -or -name *.h -or"
-                let cmd .=       " -name *.C   -or -name *.H -or"
-                let cmd .=       " -name *.c++ -or -name *.h++ -or"
-                let cmd .=       " -name *.cxx -or -name *.hxx -or"
-                let cmd .=       " -name *.cc  -or -name *.hh -or"
-                let cmd .=       " -name *.cpp -or -name *.hpp"
-                let cmd .=       " -type f"
-            else
-                let cmd .= "echo "  " dummy so following cat command does not hang.
-            endif
-
-            " trick to combine extra file list below and auto list above
-            "
-            let cmd .= "| cat - "
-
-            " Append extra file list if present
-            "
-            if filereadable(expand(s:extra_files))
-                let cmd .= s:extra_files
-            endif
-
-            " prune entries that are in the small DB
-            "
-            if !empty(s:small_file_dict)
-                let cmd .= " | grep -v -f".s:small_file.".files "
-            endif
-
-            " Trick to resolve links with relative paths
-            "
-            if s:resolve_links
-                let cmd .= "| xargs realpath --relative-to=$(pwd) "
-            endif
-
-            let cmd .= "> ".s:big_file.".files"
-
             " Build the tags
             "
-            let cmd .= " && nice cscope -kqbR "
+            let cmd .= "nice cscope -kqbR "
             if s:full_update_force
                 let cmd .= "-u "
             else
                 let cmd .= "-U "
             endif
-            let cmd .= "-i".s:big_file.".files -f".s:big_file
+            let cmd .= "-i".s:proj_file." -f".s:big_file
             let cmd .= "; rm ".s:lock_file
             let cmd .= ") &>/dev/null &"
 
@@ -365,7 +315,7 @@ if has("cscope")
                 "it is already loaded. don't try to reload it.
             endif
         endif
-        let newcsdbpath = Find_in_parent("cscope.out",Windowdir(),$HOME)
+        let newcsdbpath = Find_in_parent("files.proj",Windowdir(),$HOME)
         "    echo "Found cscope.out at: " . newcsdbpath
         "    echo "Windowdir: " . Windowdir()
         if newcsdbpath != "Nothing"
@@ -374,6 +324,7 @@ if has("cscope")
                 let save_csvb = &csverb
                 set nocsverb
                 exe "cs add " . b:csdbpath . "/cscope.out " . b:csdbpath
+                let s:proj_file = b:csdbpath . "/files.proj"
                 let s:big_file = b:csdbpath . "/cscope.out"
                 let s:small_file = b:csdbpath . "/cscope.small"
                 set csverb
