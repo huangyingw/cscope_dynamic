@@ -327,6 +327,7 @@ if has("cscope")
                 let s:proj_file = b:csdbpath . "/files.proj"
                 let s:big_file = b:csdbpath . "/cscope.out"
                 let s:small_file = b:csdbpath . "/cscope.small"
+                let s:lock_file = b:csdbpath . "/.cscopedb.lock"
                 set csverb
                 let &csverb = save_csvb
             endif
