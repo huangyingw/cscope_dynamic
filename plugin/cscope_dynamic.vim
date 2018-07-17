@@ -179,7 +179,7 @@ if has("cscope")
             else
                 let cmd .= "-U "
             endif
-            let cmd .= "-i".s:proj_file." -f".s:big_file
+            let cmd .= "-i" . s:proj_file . " -f" . s:big_file . ".bak; cp -fv " . s:big_file . ".bak " . s:big_file
             let cmd .= "; rm ".s:lock_file
             let cmd .= ") &>/dev/null &"
 
