@@ -110,6 +110,10 @@ if has("cscope")
     " of the necessary databases.
     "
     function! s:smallListUpdate(file)
+        if (expand("%") =~ 'findresult')
+            return
+        endif
+
         let s:small_update = 1
 
         " If file moves to small DB then we also do a big DB update so
@@ -119,6 +123,7 @@ if has("cscope")
         else
             let path = fnamemodify(expand(a:file), ":p:.")
         endif
+
         if !has_key(s:small_file_dict, path)
             let s:small_file_dict[path] = 1
             let s:big_update = 1
