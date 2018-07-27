@@ -31,6 +31,21 @@ endif
 let s:save_cpo = &cpo
 set cpo&vim
 
+"==
+" Unload_csdb
+"  drop cscope connections.
+function s:Unload_csdb()
+    if exists("b:csdbpath")
+        if cscope_connection(3, "out", b:csdbpath)
+            let save_csvb = &csverb
+            set nocsverb
+            exe "cs kill " . b:csdbpath
+            set csverb
+            let &csverb = save_csvb
+        endif
+    endif
+endfunc
+
 "
 "==
 " Cycle_csdb
