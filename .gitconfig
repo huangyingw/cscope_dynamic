@@ -17,3 +17,6 @@
 [branch "autoload/dev"]
     remote = origin
     merge = refs/heads/autoload/dev
+[branch "cscope/autoload"]
+    remote = origin
+    merge = refs/heads/cscope/autoload
