@@ -1,8 +1,7 @@
 " Section: Internal script variables {{{1
 "
 let s:big_init = 0
-let s:big_last_update = 0
-let s:big_min_interval = 10
+let s:big_min_interval = 1
 let s:big_update = 0
 let s:full_update_force = 0
 let s:lock_file = ".cscopedb.lock"
@@ -68,7 +67,8 @@ function s:Cycle_csdb()
             let s:proj_file = b:csdbpath . "/files.proj"
             let s:big_file = b:csdbpath . "/cscope.out"
             let s:small_file = b:csdbpath . "/cscope.small"
-            let s:lock_file = b:csdbpath . "/.cscopedb.lock"
+            let s:lock_file = b:csdbpath . "/cscopedb.lock"
+            let s:big_last_update = str2nr(system("date -r cscope.out +%s"))
             set csverb
             let &csverb = save_csvb
         endif
@@ -151,7 +151,6 @@ function! s:dbUpdate()
         call UpdateProj()
         silent exec '!rm ' . s:lock_file
         let s:big_update = 2
-        let s:big_last_update = localtime()
         let s:full_update_force = 0
     endif
 endfunction
