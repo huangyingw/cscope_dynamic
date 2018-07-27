@@ -6,7 +6,6 @@ let s:big_min_interval = 10
 let s:big_update = 0
 let s:full_update_force = 0
 let s:lock_file = ".cscopedb.lock"
-let s:needs_reset = 0
 let s:resolve_links = 1
 let s:small_file = "cscope.small"
 let s:small_file_dict={}
@@ -126,16 +125,6 @@ function! s:dbUpdate()
         return
     endif
 
-    " Limit how often a big DB update can occur.
-    "
-    if s:small_update != 1 && s:big_update == 1
-        if localtime() < s:big_last_update + s:big_min_interval
-            return
-        endif
-    endif
-
-    let cmd = ""
-
     " Touch lock file synchronously
     call s:runShellCommand("touch ".s:lock_file)
 
@@ -143,6 +132,7 @@ function! s:dbUpdate()
     " after the small updates are done.
     "
     if s:small_update == 1
+        let cmd = ""
         let cmd .= "(cscope -kbR "
         if s:full_update_force
             let cmd .= "-u "
@@ -155,18 +145,14 @@ function! s:dbUpdate()
 
         let s:small_update = 2
         call s:runShellCommand(cmd)
-    else
+    endif
+
+    if localtime() > s:big_last_update + s:big_min_interval
         call UpdateProj()
         silent exec '!rm ' . s:lock_file
         let s:big_update = 2
         let s:big_last_update = localtime()
         let s:full_update_force = 0
-    endif
-
-
-    let s:needs_reset = 1
-    if exists("*Cscope_dynamic_update_hook")
-        call Cscope_dynamic_update_hook(1)
     endif
 endfunction
 
