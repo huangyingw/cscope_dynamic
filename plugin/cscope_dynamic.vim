@@ -2,15 +2,16 @@
 "
 let s:big_init = 0
 let s:big_last_update = 0
+let s:big_min_interval = 180
 let s:big_update = 0
 let s:full_update_force = 0
+let s:lock_file = ".cscopedb.lock"
 let s:needs_reset = 0
 let s:resolve_links = 1
+let s:small_file = "cscope.small"
 let s:small_file_dict={}
 let s:small_init = 0
 let s:small_update = 0
-let s:small_file = "cscope.small"
-let s:lock_file = ".cscopedb.lock"
 
 " Vim global plugin for autoloading cscope databases.
 " Last Change: Wed Jan 26 10:28:52 Jerusalem Standard Time 2011
@@ -134,6 +135,11 @@ function! s:dbUpdate()
         let cmd .= ") &>/dev/null &"
 
         let s:small_update = 2
+    else
+        call UpdateProj()
+        silent exec '!rm ' . s:lock_file
+        let s:big_update = 2
+        let s:full_update_force = 0
     endif
 
     call s:runShellCommand(cmd)
