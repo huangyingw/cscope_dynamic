@@ -1,372 +1,175 @@
-" vim: set foldmethod=marker:
-"
-" Copyright (c) 2014, Eric Garver
-" All rights reserved.
-"
-" Redistribution and use in source and binary forms, with or without
-" modification, are permitted provided that the following conditions are met:
-"
-" 1. Redistributions of source code must retain the above copyright notice, this
-"    list of conditions and the following disclaimer.
-" 2. Redistributions in binary form must reproduce the above copyright notice,
-"    this list of conditions and the following disclaimer in the documentation
-"    and/or other materials provided with the distribution.
-"
-" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-" WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-" DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
-" ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-" (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-" ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-" (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-" SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+" Vim global plugin for autoloading cscope databases.
+" Last Change: Wed Jan 26 10:28:52 Jerusalem Standard Time 2011
+" Maintainer: Michael Conrad Tadpol Tilsra <tadpol@tadpol.org>
+" Revision: 0.5
 
-
-"
-" Vim Plugin to automatically update cscope when a buffer has been written.
-"
-if has("cscope")
-    if exists("g:cscope_dynamic_loaded")
-        finish
-    endif
-    let g:cscope_dynamic_loaded = 1
-
-    " Section: Default variables and Tunables {{{1
-    "
-    if exists("g:cscopedb_big_file")
-        let s:big_file = g:cscopedb_big_file
-    else
-        let s:big_file = "cscope.out"
-    endif
-    if exists("g:cscopedb_small_file")
-        let s:small_file = g:cscopedb_small_file
-    else
-        let s:small_file = "cscope.small"
-    endif
-    if exists("g:cscopedb_auto_init")
-        let s:auto_init = g:cscopedb_auto_init
-    else
-        let s:auto_init = 1
-    endif
-    if exists("g:cscopedb_extra_files")
-        let s:extra_files = g:cscopedb_extra_files
-    else
-        let s:extra_files = ".cscope.extra.files"
-    endif
-    if exists("g:cscopedb_src_dirs_file")
-        let s:src_dirs_file = g:cscopedb_src_dirs_file
-    else
-        let s:src_dirs_file = ".cscope.dirs.file"
-    endif
-    if exists("g:cscopedb_auto_files")
-        let s:auto_files = g:cscopedb_auto_files
-    else
-        let s:auto_files = 1
-    endif
-    if exists("g:cscopedb_resolve_links")
-        let s:resolve_links = g:cscopedb_resolve_links
-    else
-        let s:resolve_links = 1
-    endif
-    if exists("g:cscopedb_lock_file")
-        let s:lock_file = g:cscopedb_lock_file
-    else
-        let s:lock_file = ".cscopedb.lock"
-    endif
-    if exists("g:cscopedb_big_min_interval")
-        let s:big_min_interval = g:cscopedb_big_min_interval
-    else
-        let s:big_min_interval = 180
-    endif
-
-    " Section: Internal script variables {{{1
-    "
-    let s:big_update = 0
-    let s:big_last_update = 0
-    let s:big_init = 0
-    let s:small_update = 0
-    let s:small_init = 0
-    let s:needs_reset = 0
-    let s:small_file_dict={}
-    let s:full_update_force = 0
-
-    " Section: Script functions {{{1
-
-    function! s:runShellCommand(cmd)
-        " Use perl if we have it. Using :!<shell command>
-        " breaks the tag stack for some reason.
-        "
-        if has('perl')
-            silent execute "perl system('" . a:cmd . "')" | redraw!
-        else
-            silent execute "!" . a:cmd | redraw!
-        endif
-    endfunction
-
-    " Add the file to the small DB file list. {{{2
-    " This moves the file to the small cscope DB and triggers an update
-    " of the necessary databases.
-    "
-    function! s:smallListUpdate(file)
-        if (expand("%") =~ 'findresult')
-            return
-        endif
-
-        let s:small_update = 1
-
-        " If file moves to small DB then we also do a big DB update so
-        " we don't end up with duplicate lookups.
-        if s:resolve_links
-            let path = fnamemodify(resolve(expand(a:file)), ":p:.")
-        else
-            let path = fnamemodify(expand(a:file), ":p:.")
-        endif
-
-        if !has_key(s:small_file_dict, path)
-            let s:small_file_dict[path] = 1
-            let s:big_update = 1
-            call writefile(keys(s:small_file_dict), expand(s:small_file) . ".files")
-        endif
-    endfunction
-
-    " Update any/all of the DBs {{{2
-    "
-    function! s:dbUpdate()
-        if s:small_update != 1 && s:big_update != 1
-            return
-        endif
-
-        if filereadable(expand(s:lock_file))
-            return
-        endif
-
-        " Limit how often a big DB update can occur.
-        "
-        if s:small_update != 1 && s:big_update == 1
-            if localtime() < s:big_last_update + s:big_min_interval
-                return
-            endif
-        endif
-
-        let cmd = ""
-
-        " Touch lock file synchronously
-        call s:runShellCommand("touch ".s:lock_file)
-
-        " Do small update first. We'll do big update
-        " after the small updates are done.
-        "
-        if s:small_update == 1
-            let cmd .= "(cscope -kbR "
-            if s:full_update_force
-                let cmd .= "-u "
-            else
-                let cmd .= "-U "
-            endif
-            let cmd .= "-i".s:small_file.".files -f".s:small_file
-            let cmd .= "; rm ".s:lock_file
-            let cmd .= ") &>/dev/null &"
-
-            let s:small_update = 2
-        else
-            " Build the tags
-            "
-            let cmd .= "nice cscope -kqbR "
-            if s:full_update_force
-                let cmd .= "-u "
-            else
-                let cmd .= "-U "
-            endif
-            let cmd .= "-i" . s:proj_file . " -f" . s:big_file . ".bak; cp -fv " . s:big_file . ".bak " . s:big_file
-            let cmd .= "; rm ".s:lock_file
-            let cmd .= ") &>/dev/null &"
-
-            let s:big_update = 2
-            let s:full_update_force = 0
-        endif
-
-        call s:runShellCommand(cmd)
-
-        let s:needs_reset = 1
-        if exists("*Cscope_dynamic_update_hook")
-            call Cscope_dynamic_update_hook(1)
-        endif
-    endfunction
-
-    " Reset/add the cscope DB connection if the database was recently {{{2
-    " updated/created and the update has finished.
-    "
-    function! s:dbReset()
-        if !s:needs_reset || filereadable(expand(s:lock_file))
-            return
-        endif
-
-        if s:small_update == 2
-            if !s:small_init
-                silent execute "cs add " . s:small_file
-                let s:small_init = 1
-            else
-                silent cs reset
-            endif
-            let s:small_update = 0
-        elseif s:big_update == 2
-            if !s:big_init
-                silent execute "cs add " . s:big_file
-                let s:big_init = 1
-            else
-                silent cs reset
-            endif
-            let s:big_update = 0
-            let s:big_last_update = localtime()
-        endif
-        let s:needs_reset = 0
-
-        " Don't call hook if there are small updates left.
-        " Big update has backoff delay, so we call hook even if
-        " big has an update pending.
-        if s:small_update != 1
-            if exists("*Cscope_dynamic_update_hook")
-                call Cscope_dynamic_update_hook(0)
-            endif
-        endif
-    endfunction
-
-    function! s:dbTick()
-        call s:dbReset()
-        call s:dbUpdate()
-    endfunction
-
-    " Do a FULL DB update {{{2
-    "
-    function! s:dbFullUpdate()
-        let s:big_update = 1
-        if !empty(s:small_file_dict)
-            let s:small_update = 1
-        endif
-
-        call s:dbUpdate()
-    endfunction
-
-    " Enable/init dynamic cscope updates {{{2
-    "
-    function! s:init()
-        " Blow away cscope connections (allows re-init)
-        "
-        silent! execute "cs kill " . s:big_file
-        silent! execute "cs kill " . s:small_file
-        let s:big_init = 0
-        let s:big_last_update = 0
-        let s:small_init = 0
-
-        " If they DBs exist, then add them before the update.
-        if filereadable(expand(s:big_file))
-            silent execute "cs add " . s:big_file
-            let s:big_init = 1
-        endif
-        if filereadable(expand(s:small_file))
-            silent execute "cs add " . s:small_file
-            let s:small_init = 1
-
-            " Seed the cscopedb_small_file_dict dictionary with the file list
-            " from the small DB.
-            "
-            for path in readfile(expand(s:small_file) . ".files")
-                let s:small_file_dict[path] = 1
-            endfor
-        endif
-
-        call s:installAutoCommands()
-        call s:dbFullUpdate()
-    endfunction
-
-    " Force full update of DB {{{2
-    "
-    function! s:initForce()
-        let s:full_update_force = 1
-        call s:init()
-    endfunction
-
-    " Section: Autocommands {{{1
-    "
-    function! s:installAutoCommands()
-    endfunction
-
-    " Section: Maps {{{1
-    "
-    noremap <unique> <Plug>CscopeDBInit :call <SID>initForce()<CR>
-
-    " Autoinit: {{{1
-    "
-    " If big cscope DB exists then automatically init the plugin.
-    " Means we launch vim from a location that we've already started using
-    " the plugin from.
-    "
-    if s:auto_init
-        if filereadable(expand(s:big_file))
-            call s:init()
-        endif
-    endif
-
-    "
-    "==
-    " Cycle_csdb
-    "  cycle the loaded cscope db.
-    function s:Cycle_csdb()
-        if exists("b:csdbpath")
-            if cscope_connection(3, "out", b:csdbpath)
-                return
-                "it is already loaded. don't try to reload it.
-            endif
-        endif
-        let newcsdbpath = Find_in_parent("files.proj",Windowdir(),$HOME)
-        "    echo "Found cscope.out at: " . newcsdbpath
-        "    echo "Windowdir: " . Windowdir()
-        if newcsdbpath != "Nothing"
-            let b:csdbpath = newcsdbpath
-            if !cscope_connection(3, "out", b:csdbpath)
-                let save_csvb = &csverb
-                set nocsverb
-                exe "cs add " . b:csdbpath . "/cscope.out"
-                let s:proj_file = b:csdbpath . "/files.proj"
-                let s:big_file = b:csdbpath . "/cscope.out"
-                let s:small_file = b:csdbpath . "/cscope.small"
-                let s:lock_file = b:csdbpath . "/.cscopedb.lock"
-                set csverb
-                let &csverb = save_csvb
-            endif
-            "
-        else " No cscope database, undo things. (someone rm-ed it or somesuch)
-            call s:Unload_csdb()
-        endif
-    endfunc
-    "
-    "==
-    " Unload_csdb
-    "  drop cscope connections.
-    function s:Unload_csdb()
-        if exists("b:csdbpath")
-            if cscope_connection(3, "out", b:csdbpath)
-                let save_csvb = &csverb
-                set nocsverb
-                exe "cs kill " . b:csdbpath
-                set csverb
-                let &csverb = save_csvb
-            endif
-        endif
-    endfunc
-
-    augroup cscopedb_augroup
-        au!
-        au BufWritePre * call <SID>smallListUpdate(expand("<afile>"))
-        au BufWritePost * call <SID>dbUpdate()
-        au FileChangedShellPost * call <SID>dbFullUpdate()
-    augroup END
-    " auto toggle the menu
-    augroup autoload_cscope
-        au!
-        au BufEnter *     call <SID>Cycle_csdb()
-        au BufUnload *    call <SID>Unload_csdb()
-    augroup END
+if exists("loaded_autoload_cscope")
+    finish
 endif
+let loaded_autoload_cscope = 1
+
+" requirements, you must have these enabled or this is useless.
+if(  !has('cscope') || !has('modify_fname') )
+    finish
+endif
+
+let s:save_cpo = &cpo
+set cpo&vim
+
+" If you set this to anything other than 1, the menu and macros will not be
+" loaded.  Useful if you have your own that you like.  Or don't want my stuff
+" clashing with any macros you've made.
+if !exists("g:autocscope_menus")
+    let g:autocscope_menus = 1
+endif
+"
+"==
+" Cycle_macros_menus
+"  if there are cscope connections, activate that stuff.
+"  Else toss it out.
+"  TODO Maybe I should move this into a seperate plugin?
+let s:menus_loaded = 0
+function s:Cycle_macros_menus()
+    if g:autocscope_menus != 1
+        return
+    endif
+    if cscope_connection()
+        if s:menus_loaded == 1
+            return
+        endif
+        let s:menus_loaded = 1
+        set csto=0
+        set cst
+        silent! map <unique> <C-\>s :cs find s <C-R>=expand("<cword>")<CR><CR>
+        silent! map <unique> <C-\>g :cs find g <C-R>=expand("<cword>")<CR><CR>
+        silent! map <unique> <C-\>d :cs find d <C-R>=expand("<cword>")<CR><CR>
+        silent! map <unique> <C-\>c :cs find c <C-R>=expand("<cword>")<CR><CR>
+        silent! map <unique> <C-\>t :cs find t <C-R>=expand("<cword>")<CR><CR>
+        silent! map <unique> <C-\>e :cs find e <C-R>=expand("<cword>")<CR><CR>
+        silent! map <unique> <C-\>f :cs find f <C-R>=expand("<cword>")<CR><CR>
+        silent! map <unique> <C-\>i :cs find i <C-R>=expand("<cword>")<CR><CR>
+        if has("menu")
+            nmenu &Cscope.Find.Symbol<Tab><c-\\>s
+                        \ :cs find s <C-R>=expand("<cword>")<CR><CR>
+            nmenu &Cscope.Find.Definition<Tab><c-\\>g
+                        \ :cs find g <C-R>=expand("<cword>")<CR><CR>
+            nmenu &Cscope.Find.Called<Tab><c-\\>d
+                        \ :cs find d <C-R>=expand("<cword>")<CR><CR>
+            nmenu &Cscope.Find.Calling<Tab><c-\\>c
+                        \ :cs find c <C-R>=expand("<cword>")<CR><CR>
+            nmenu &Cscope.Find.Assignment<Tab><c-\\>t
+                        \ :cs find t <C-R>=expand("<cword>")<CR><CR>
+            nmenu &Cscope.Find.Egrep<Tab><c-\\>e
+                        \ :cs find e <C-R>=expand("<cword>")<CR><CR>
+            nmenu &Cscope.Find.File<Tab><c-\\>f
+                        \ :cs find f <C-R>=expand("<cword>")<CR><CR>
+            nmenu &Cscope.Find.Including<Tab><c-\\>i
+                        \ :cs find i <C-R>=expand("<cword>")<CR><CR>
+            "      nmenu &Cscope.Add :cs add
+            "      nmenu &Cscope.Remove  :cs kill
+            nmenu &Cscope.Reset :cs reset<cr>
+            nmenu &Cscope.Show :cs show<cr>
+            " Need to figure out how to do the add/remove. May end up writing
+            " some container functions.  Or tossing them out, since this is supposed
+            " to all be automatic.
+        endif
+    else
+        let s:menus_loaded = 0
+        set nocst
+        silent! unmap <C-\>s
+        silent! unmap <C-\>g
+        silent! unmap <C-\>d
+        silent! unmap <C-\>c
+        silent! unmap <C-\>t
+        silent! unmap <C-\>e
+        silent! unmap <C-\>f
+        silent! unmap <C-\>i
+        if has("menu")  " would rather see if the menu exists, then remove...
+            silent! nunmenu Cscope
+        endif
+    endif
+endfunc
+"
+"==
+" Unload_csdb
+"  drop cscope connections.
+function s:Unload_csdb()
+    if exists("b:csdbpath")
+        if cscope_connection(3, "out", b:csdbpath)
+            let save_csvb = &csverb
+            set nocsverb
+            exe "cs kill " . b:csdbpath
+            set csverb
+            let &csverb = save_csvb
+        endif
+    endif
+endfunc
+"
+"==
+" Cycle_csdb
+"  cycle the loaded cscope db.
+function s:Cycle_csdb()
+    if exists("b:csdbpath")
+        if cscope_connection(3, "out", b:csdbpath)
+            return
+            "it is already loaded. don't try to reload it.
+        endif
+    endif
+    let newcsdbpath = Find_in_parent("cscope.out",Windowdir(),$HOME)
+    "    echo "Found cscope.out at: " . newcsdbpath
+    "    echo "Windowdir: " . Windowdir()
+    if newcsdbpath != "Nothing"
+        let b:csdbpath = newcsdbpath
+        if !cscope_connection(3, "out", b:csdbpath)
+            let save_csvb = &csverb
+            set nocsverb
+            exe "cs add " . b:csdbpath . "/cscope.out " . b:csdbpath
+            set csverb
+            let &csverb = save_csvb
+        endif
+        "
+    else " No cscope database, undo things. (someone rm-ed it or somesuch)
+        call s:Unload_csdb()
+    endif
+endfunc
+
+" Add the file to the small DB file list. {{{2
+" This moves the file to the small cscope DB and triggers an update
+" of the necessary databases.
+"
+function! s:smallListUpdate(file)
+    if (expand("%") =~ 'findresult')
+        return
+    endif
+
+    let s:small_update = 1
+
+    " If file moves to small DB then we also do a big DB update so
+    " we don't end up with duplicate lookups.
+    if s:resolve_links
+        let path = fnamemodify(resolve(expand(a:file)), ":p:.")
+    else
+        let path = fnamemodify(expand(a:file), ":p:.")
+    endif
+
+    if !has_key(s:small_file_dict, path)
+        let s:small_file_dict[path] = 1
+        let s:big_update = 1
+        call writefile(keys(s:small_file_dict), expand(s:small_file) . ".files")
+    endif
+endfunction
+
+augroup cscopedb_augroup
+    au!
+    au BufWritePre * call <SID>smallListUpdate(expand("<afile>"))
+    au BufWritePost * call <SID>dbUpdate()
+    au FileChangedShellPost * call <SID>dbFullUpdate()
+augroup END
+" auto toggle the menu
+augroup autoload_cscope
+    au!
+    au BufEnter *     call <SID>Cycle_csdb() | call <SID>Cycle_macros_menus()
+    au BufUnload *    call <SID>Unload_csdb() | call <SID>Cycle_macros_menus()
+augroup END
+
+let &cpo = s:save_cpo
