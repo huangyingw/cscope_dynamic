@@ -51,6 +51,10 @@ function s:Cycle_csdb()
             let save_csvb = &csverb
             set nocsverb
             exe "cs add " . b:csdbpath . "/cscope.out " . b:csdbpath
+            let s:proj_file = b:csdbpath . "/files.proj"
+            let s:big_file = b:csdbpath . "/cscope.out"
+            let s:small_file = b:csdbpath . "/cscope.small"
+            let s:lock_file = b:csdbpath . "/.cscopedb.lock"
             set csverb
             let &csverb = save_csvb
         endif
@@ -135,6 +139,7 @@ function! s:dbUpdate()
         let cmd .= ") &>/dev/null &"
 
         let s:small_update = 2
+        call s:runShellCommand(cmd)
     else
         call UpdateProj()
         silent exec '!rm ' . s:lock_file
@@ -142,7 +147,6 @@ function! s:dbUpdate()
         let s:full_update_force = 0
     endif
 
-    call s:runShellCommand(cmd)
 
     let s:needs_reset = 1
     if exists("*Cscope_dynamic_update_hook")
