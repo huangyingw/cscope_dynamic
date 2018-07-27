@@ -2,7 +2,7 @@
 "
 let s:big_init = 0
 let s:big_last_update = 0
-let s:big_min_interval = 180
+let s:big_min_interval = 10
 let s:big_update = 0
 let s:full_update_force = 0
 let s:lock_file = ".cscopedb.lock"
@@ -159,6 +159,7 @@ function! s:dbUpdate()
         call UpdateProj()
         silent exec '!rm ' . s:lock_file
         let s:big_update = 2
+        let s:big_last_update = localtime()
         let s:full_update_force = 0
     endif
 
