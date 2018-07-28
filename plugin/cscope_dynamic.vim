@@ -1,7 +1,7 @@
 " Section: Internal script variables {{{1
 "
 let s:big_init = 0
-let s:big_min_interval = 1
+let s:big_min_interval = 180
 let s:big_update = 0
 let s:full_update_force = 0
 let s:lock_file = ".cscopedb.lock"
@@ -69,6 +69,7 @@ function s:Cycle_csdb()
             let s:small_file = b:csdbpath . "/cscope.small"
             let s:lock_file = b:csdbpath . "/cscopedb.lock"
             let s:big_last_update = str2nr(system("date -r cscope.out +%s"))
+            let s:big_min_interval = 1000 * str2nr(substitute(system("cat running.time"), '\n', '', ''))
             set csverb
             let &csverb = save_csvb
         endif
