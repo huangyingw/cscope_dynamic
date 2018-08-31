@@ -4,7 +4,7 @@ let s:big_init = 0
 let s:big_min_interval = 180
 let s:big_update = 0
 let s:full_update_force = 0
-let s:lock_file = ".cscopedb.lock"
+let s:lock_file = "cscopedb.lock"
 let s:resolve_links = 1
 let s:small_file = "cscope.small"
 let s:small_file_dict={}
@@ -148,12 +148,12 @@ function! s:dbUpdate()
         call s:runShellCommand(cmd)
     endif
 
-    "if localtime() > s:big_last_update + s:big_min_interval
-    "    call UpdateProj()
-    "    silent exec '!rm ' . s:lock_file
-    "    let s:big_update = 2
-    "    let s:full_update_force = 0
-    "endif
+    if localtime() > s:big_last_update + s:big_min_interval
+        call UpdateProj()
+        silent exec '!rm ' . s:lock_file
+        let s:big_update = 2
+        let s:full_update_force = 0
+    endif
 endfunction
 
 " Do a FULL DB update {{{2
