@@ -69,7 +69,7 @@ function s:Cycle_csdb()
             let s:small_file = b:csdbpath . "/cscope.small"
             let s:lock_file = b:csdbpath . "/cscopedb.lock"
             let s:big_last_update = str2nr(system("date -r cscope.out +%s"))
-            let s:big_min_interval = 1000 * str2nr(substitute(system("cat running.time"), '\n', '', ''))
+            let s:big_min_interval = 1000 * str2nr(substitute(system("cat " .  b:csdbpath . "/running.time"), '\n', '', ''))
             set csverb
             let &csverb = save_csvb
         endif
