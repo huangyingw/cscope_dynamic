@@ -4,7 +4,6 @@ let s:big_init = 0
 let s:big_min_interval = 180
 let s:big_update = 0
 let s:full_update_force = 0
-let s:lock_file = "cscopedb.lock"
 let s:resolve_links = 1
 let s:small_file = "cscope.small"
 let s:small_file_dict={}
@@ -67,7 +66,6 @@ function s:Cycle_csdb()
             let s:proj_file = b:csdbpath . "/files.proj"
             let s:big_file = b:csdbpath . "/cscope.out"
             let s:small_file = b:csdbpath . "/cscope.small"
-            let s:lock_file = b:csdbpath . "/cscopedb.lock"
             let s:big_last_update = str2nr(system("date -r " .  b:csdbpath . "/cscope.out +%s"))
             let s:big_min_interval = 100 * str2nr(substitute(system("cat " .  b:csdbpath . "/running.time"), '\n', '', ''))
             set csverb
@@ -122,13 +120,6 @@ function! s:dbUpdate()
         return
     endif
 
-    if filereadable(expand(s:lock_file))
-        return
-    endif
-
-    " Touch lock file synchronously
-    call s:runShellCommand("touch ".s:lock_file)
-
     " Do small update first. We'll do big update
     " after the small updates are done.
     "
@@ -141,7 +132,6 @@ function! s:dbUpdate()
             let cmd .= "-U "
         endif
         let cmd .= "-i".s:small_file.".files -f".s:small_file
-        let cmd .= "; rm ".s:lock_file
         let cmd .= ") &>/dev/null &"
 
         let s:small_update = 2
@@ -150,7 +140,6 @@ function! s:dbUpdate()
 
     if localtime() > s:big_last_update + s:big_min_interval
         call UpdateProj()
-        silent exec '!rm ' . s:lock_file
         let s:big_update = 2
         let s:full_update_force = 0
     endif
