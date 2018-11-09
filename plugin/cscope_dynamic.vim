@@ -67,7 +67,7 @@ function s:Cycle_csdb()
             let s:big_file = b:csdbpath . "/cscope.out"
             let s:small_file = b:csdbpath . "/cscope.small"
             let s:big_last_update = str2nr(system("date -r " .  b:csdbpath . "/cscope.out +%s"))
-            let s:big_min_interval = 100 * str2nr(substitute(system("cat " .  b:csdbpath . "/running.time"), '\n', '', ''))
+            let s:big_min_interval = 10 * str2nr(substitute(system("cat " .  b:csdbpath . "/running.time"), '\n', '', ''))
             set csverb
             let &csverb = save_csvb
         endif
