@@ -54,7 +54,7 @@ function s:Cycle_csdb()
             "it is already loaded. don't try to reload it.
         endif
     endif
-    let newcsdbpath = Find_in_parent("cscope.out",Windowdir(),$HOME)
+    let newcsdbpath = Find_in_parent("cscope.out", Windowdir(), $HOME)
     "    echo "Found cscope.out at: " . newcsdbpath
     "    echo "Windowdir: " . Windowdir()
     if newcsdbpath != "Nothing"
