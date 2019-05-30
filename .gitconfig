@@ -4,8 +4,7 @@
 [push]
     remote = origin
 [gsync]
-    remote = erig0
-    branch = master
+    remote = erig0/master
 [commit]
     message = n
 [branch "master"]
